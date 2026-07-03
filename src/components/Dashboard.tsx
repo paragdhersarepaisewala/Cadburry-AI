@@ -6,8 +6,14 @@ export default function Dashboard() {
   const [lmStudioUrl, setLmStudioUrl] = useState(() => localStorage.getItem('lmStudioUrl') || 'http://localhost:1234');
   const [lmStudioModel, setLmStudioModel] = useState(() => localStorage.getItem('lmStudioModel') || 'google/gemma-4-e2b');
   const [geminiApiKey, setGeminiApiKey] = useState(() => localStorage.getItem('geminiApiKey') || '');
+  const [geminiModel, setGeminiModel] = useState(() => localStorage.getItem('geminiModel') || 'gemini-2.5-flash');
   const [openaiApiKey, setOpenaiApiKey] = useState(() => localStorage.getItem('openaiApiKey') || '');
+  const [openaiModel, setOpenaiModel] = useState(() => localStorage.getItem('openaiModel') || 'gpt-4o-mini');
   const [anthropicApiKey, setAnthropicApiKey] = useState(() => localStorage.getItem('anthropicApiKey') || '');
+  const [anthropicModel, setAnthropicModel] = useState(() => localStorage.getItem('anthropicModel') || 'claude-3-5-sonnet-20240620');
+  const [nvidiaApiKey, setNvidiaApiKey] = useState(() => localStorage.getItem('nvidiaApiKey') || '');
+  const [nvidiaUrl, setNvidiaUrl] = useState(() => localStorage.getItem('nvidiaUrl') || 'https://integrate.api.nvidia.com/v1');
+  const [nvidiaModel, setNvidiaModel] = useState(() => localStorage.getItem('nvidiaModel') || 'meta/llama-3.1-70b-instruct');
   const [resumeText, setResumeText] = useState(() => localStorage.getItem('resumeText') || '');
   const [jobDescription, setJobDescription] = useState(() => localStorage.getItem('jobDescription') || '');
   
@@ -36,8 +42,14 @@ export default function Dashboard() {
     localStorage.setItem('lmStudioUrl', lmStudioUrl);
     localStorage.setItem('lmStudioModel', lmStudioModel);
     localStorage.setItem('geminiApiKey', geminiApiKey);
+    localStorage.setItem('geminiModel', geminiModel);
     localStorage.setItem('openaiApiKey', openaiApiKey);
+    localStorage.setItem('openaiModel', openaiModel);
     localStorage.setItem('anthropicApiKey', anthropicApiKey);
+    localStorage.setItem('anthropicModel', anthropicModel);
+    localStorage.setItem('nvidiaApiKey', nvidiaApiKey);
+    localStorage.setItem('nvidiaUrl', nvidiaUrl);
+    localStorage.setItem('nvidiaModel', nvidiaModel);
     localStorage.setItem('resumeText', resumeText);
     localStorage.setItem('jobDescription', jobDescription);
     
@@ -45,7 +57,11 @@ export default function Dashboard() {
     localStorage.setItem('whisperUrl', whisperUrl);
     localStorage.setItem('whisperApiKey', whisperApiKey);
     localStorage.setItem('whisperModel', whisperModel);
-  }, [model, lmStudioUrl, lmStudioModel, geminiApiKey, openaiApiKey, anthropicApiKey, resumeText, jobDescription, sttProvider, whisperUrl, whisperApiKey, whisperModel]);
+  }, [
+    model, lmStudioUrl, lmStudioModel, geminiApiKey, geminiModel, openaiApiKey, openaiModel, 
+    anthropicApiKey, anthropicModel, nvidiaApiKey, nvidiaUrl, nvidiaModel, resumeText, jobDescription, 
+    sttProvider, whisperUrl, whisperApiKey, whisperModel
+  ]);
 
   const handleStart = () => {
     if (window.electronAPI) {
@@ -66,11 +82,13 @@ export default function Dashboard() {
         } else if (model === 'gemma') {
           result = await window.electronAPI.testConnection('gemma', '', '');
         } else if (model === 'google') {
-          result = await window.electronAPI.testConnection('google', '', geminiApiKey);
+          result = await window.electronAPI.testConnection('google', '', geminiApiKey, geminiModel);
         } else if (model === 'openai') {
-          result = await window.electronAPI.testConnection('openai', '', openaiApiKey);
+          result = await window.electronAPI.testConnection('openai', '', openaiApiKey, openaiModel);
         } else if (model === 'anthropic') {
-          result = await window.electronAPI.testConnection('anthropic', '', anthropicApiKey);
+          result = await window.electronAPI.testConnection('anthropic', '', anthropicApiKey, anthropicModel);
+        } else if (model === 'nvidia') {
+          result = await window.electronAPI.testConnection('nvidia', nvidiaUrl, nvidiaApiKey, nvidiaModel);
         }
         
         // Also test STT connection if configured
@@ -179,9 +197,10 @@ export default function Dashboard() {
                   >
                     <option value="lmstudio">Local: LM Studio (localhost)</option>
                     <option value="gemma">Local: Gemma 2 (Ollama)</option>
-                    <option value="google">Cloud: Google (Gemini 1.5)</option>
-                    <option value="openai">Cloud: OpenAI (GPT-4o)</option>
-                    <option value="anthropic">Cloud: Anthropic (Claude 3.5)</option>
+                    <option value="google">Cloud: Google (Gemini)</option>
+                    <option value="openai">Cloud: OpenAI (GPT)</option>
+                    <option value="anthropic">Cloud: Anthropic (Claude)</option>
+                    <option value="nvidia">Cloud: Nvidia NIM (Llama 3/Nemotron)</option>
                   </select>
                 </div>
 
@@ -217,7 +236,7 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                {/* Gemini API Key */}
+                {/* Gemini API Key & Model */}
                 {model === 'google' && (
                   <div className="space-y-4 pt-2 border-t border-gray-800">
                     <div>
@@ -232,10 +251,22 @@ export default function Dashboard() {
                         placeholder="AIzaSy..."
                       />
                     </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">
+                        Gemini Model Name
+                      </label>
+                      <input 
+                        type="text"
+                        value={geminiModel}
+                        onChange={(e) => setGeminiModel(e.target.value)}
+                        className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-gray-200 text-sm focus:outline-none focus:border-indigo-500"
+                        placeholder="e.g. gemini-2.5-flash or gemini-2.0-flash"
+                      />
+                    </div>
                   </div>
                 )}
 
-                {/* OpenAI API Key */}
+                {/* OpenAI API Key & Model */}
                 {model === 'openai' && (
                   <div className="space-y-4 pt-2 border-t border-gray-800">
                     <div>
@@ -250,10 +281,22 @@ export default function Dashboard() {
                         placeholder="sk-proj-..."
                       />
                     </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">
+                        OpenAI Model Name
+                      </label>
+                      <input 
+                        type="text"
+                        value={openaiModel}
+                        onChange={(e) => setOpenaiModel(e.target.value)}
+                        className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-gray-200 text-sm focus:outline-none focus:border-indigo-500"
+                        placeholder="e.g. gpt-4o-mini or gpt-4o"
+                      />
+                    </div>
                   </div>
                 )}
 
-                {/* Anthropic API Key */}
+                {/* Anthropic API Key & Model */}
                 {model === 'anthropic' && (
                   <div className="space-y-4 pt-2 border-t border-gray-800">
                     <div>
@@ -266,6 +309,63 @@ export default function Dashboard() {
                         onChange={(e) => setAnthropicApiKey(e.target.value)}
                         className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-gray-200 text-sm focus:outline-none focus:border-indigo-500"
                         placeholder="sk-ant-..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">
+                        Anthropic Model Name
+                      </label>
+                      <input 
+                        type="text"
+                        value={anthropicModel}
+                        onChange={(e) => setAnthropicModel(e.target.value)}
+                        className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-gray-200 text-sm focus:outline-none focus:border-indigo-500"
+                        placeholder="e.g. claude-3-5-sonnet-20240620"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Nvidia NIM Settings */}
+                {model === 'nvidia' && (
+                  <div className="space-y-4 pt-2 border-t border-gray-800">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider flex items-center gap-1">
+                        <Link size={12} />
+                        Nvidia NIM URL
+                      </label>
+                      <input 
+                        type="text"
+                        value={nvidiaUrl}
+                        onChange={(e) => setNvidiaUrl(e.target.value)}
+                        className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-gray-200 text-sm focus:outline-none focus:border-indigo-500"
+                        placeholder="e.g. https://integrate.api.nvidia.com/v1"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider flex items-center gap-1">
+                        <Key size={12} />
+                        Nvidia API Key
+                      </label>
+                      <input 
+                        type="password"
+                        value={nvidiaApiKey}
+                        onChange={(e) => setNvidiaApiKey(e.target.value)}
+                        className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-gray-200 text-sm focus:outline-none focus:border-indigo-500"
+                        placeholder="nvapi-..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider flex items-center gap-1">
+                        <Cpu size={12} />
+                        Model Name
+                      </label>
+                      <input 
+                        type="text"
+                        value={nvidiaModel}
+                        onChange={(e) => setNvidiaModel(e.target.value)}
+                        className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-gray-200 text-sm focus:outline-none focus:border-indigo-500"
+                        placeholder="e.g. meta/llama-3.1-70b-instruct"
                       />
                     </div>
                   </div>

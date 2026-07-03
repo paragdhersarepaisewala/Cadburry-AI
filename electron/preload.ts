@@ -6,8 +6,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setIgnoreMouseEvents: (ignore: boolean, options?: { forward: boolean }) => 
     ipcRenderer.send('set-ignore-mouse-events', ignore, options),
   getDesktopSources: () => ipcRenderer.invoke('get-desktop-sources'),
-  testConnection: (provider: string, url: string, key: string) => 
-    ipcRenderer.invoke('test-connection', provider, url, key),
+  testConnection: (provider: string, url: string, key: string, customModel?: string) => 
+    ipcRenderer.invoke('test-connection', provider, url, key, customModel),
   callLLM: (params: any) => ipcRenderer.invoke('call-llm-api', params),
   transcribeAudio: (url: string, key: string, model: string, audioBase64: string) =>
     ipcRenderer.invoke('transcribe-audio', url, key, model, audioBase64),

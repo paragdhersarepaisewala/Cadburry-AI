@@ -3,8 +3,14 @@ export interface APIParams {
   lmStudioUrl: string;
   lmStudioModel: string;
   geminiApiKey: string;
+  geminiModel?: string;
   openaiApiKey?: string;
+  openaiModel?: string;
   anthropicApiKey?: string;
+  anthropicModel?: string;
+  nvidiaApiKey?: string;
+  nvidiaModel?: string;
+  nvidiaUrl?: string;
   resumeText: string;
   jobDescription: string;
   audioBase64: string;
@@ -55,8 +61,14 @@ export async function sendAudioToLLM(params: APIParams): Promise<string> {
     lmStudioUrl,
     lmStudioModel,
     geminiApiKey,
+    geminiModel,
     openaiApiKey,
+    openaiModel,
     anthropicApiKey,
+    anthropicModel,
+    nvidiaApiKey,
+    nvidiaModel,
+    nvidiaUrl,
     resumeText,
     jobDescription,
     audioBase64,
@@ -173,7 +185,7 @@ INSTRUCTIONS:
         'Authorization': `Bearer ${openaiApiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: openaiModel || 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
@@ -210,7 +222,7 @@ INSTRUCTIONS:
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20240620',
+        model: anthropicModel || 'claude-3-5-sonnet-20240620',
         max_tokens: 1024,
         system: promptText,
         messages: [
@@ -231,13 +243,52 @@ INSTRUCTIONS:
     const data = await response.json() as any;
     return data.content?.[0]?.text || 'No suggestion received.';
   }
+
+  // 5. Nvidia NIM (OpenAI Compatible)
+  if (provider === 'nvidia') {
+    if (!nvidiaApiKey) {
+      throw new Error('Nvidia API Key is missing.');
+    }
+    const baseUrl = (nvidiaUrl || 'https://integrate.api.nvidia.com/v1').replace(/\/$/, '');
+    const url = `${baseUrl}/chat/completions`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${nvidiaApiKey}`,
+      },
+      body: JSON.stringify({
+        model: nvidiaModel || 'meta/llama-3.1-70b-instruct',
+        messages: [
+          {
+            role: 'system',
+            content: promptText,
+          },
+          {
+            role: 'user',
+            content: `Conversation Log So Far:\n${textTranscript}`,
+          },
+        ],
+        temperature: 0.3,
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Nvidia NIM API error: ${response.status} - ${errText}`);
+    }
+
+    const data = await response.json() as any;
+    return data.choices?.[0]?.message?.content || 'No suggestion received.';
+  }
   
-  // 5. Gemini 1.5
+  // 6. Gemini 2.x/1.5
   if (provider === 'google') {
     if (!geminiApiKey) {
       throw new Error('Gemini API Key is missing.');
     }
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
+    const selectedModel = geminiModel || 'gemini-2.5-flash';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${geminiApiKey}`;
     
     const parts: any[] = [];
     if (textTranscript) {
@@ -285,7 +336,7 @@ INSTRUCTIONS:
   throw new Error(`Unsupported provider: ${provider}`);
 }
 
-export async function testLLMConnection(provider: string, url: string, key: string): Promise<string> {
+export async function testLLMConnection(provider: string, url: string, key: string, customModel?: string): Promise<string> {
   if (provider === 'lmstudio') {
     const targetUrl = `${url.replace(/\/$/, '')}/models`;
     const res = await fetch(targetUrl);
@@ -316,8 +367,8 @@ export async function testLLMConnection(provider: string, url: string, key: stri
     if (!key) {
       throw new Error('Anthropic API Key is required.');
     }
-    // Anthropic doesn't have a simple list models GET endpoint without key headers.
-    // We send a dummy message to test authentication.
+    // Test authentication with Anthropic
+    const modelName = customModel || 'claude-3-5-sonnet-20240620';
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -326,7 +377,7 @@ export async function testLLMConnection(provider: string, url: string, key: stri
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20240620',
+        model: modelName,
         max_tokens: 1,
         messages: [{ role: 'user', content: 'test' }]
       })
@@ -344,6 +395,18 @@ export async function testLLMConnection(provider: string, url: string, key: stri
       throw new Error('Invalid API Key or network error');
     }
     return 'Gemini API Key validated successfully!';
+  } else if (provider === 'nvidia') {
+    if (!key) {
+      throw new Error('Nvidia API Key is required.');
+    }
+    const cleanUrl = (url || 'https://integrate.api.nvidia.com/v1').trim().replace(/\/$/, '');
+    const res = await fetch(`${cleanUrl}/models`, {
+      headers: { 'Authorization': `Bearer ${key}` }
+    });
+    if (!res.ok) {
+      throw new Error('Invalid Nvidia API Key or Endpoint URL');
+    }
+    return 'Nvidia NIM connection verified successfully!';
   } else if (provider === 'whisper') {
     if (!key) {
       throw new Error('Whisper API Key is required.');

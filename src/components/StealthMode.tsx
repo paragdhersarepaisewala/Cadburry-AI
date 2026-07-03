@@ -271,8 +271,14 @@ export default function StealthMode() {
     const lmStudioUrl = localStorage.getItem('lmStudioUrl') || 'http://localhost:1234';
     const lmStudioModel = localStorage.getItem('lmStudioModel') || 'google/gemma-4-e2b';
     const geminiApiKey = localStorage.getItem('geminiApiKey') || '';
+    const geminiModel = localStorage.getItem('geminiModel') || 'gemini-2.5-flash';
     const openaiApiKey = localStorage.getItem('openaiApiKey') || '';
+    const openaiModel = localStorage.getItem('openaiModel') || 'gpt-4o-mini';
     const anthropicApiKey = localStorage.getItem('anthropicApiKey') || '';
+    const anthropicModel = localStorage.getItem('anthropicModel') || 'claude-3-5-sonnet-20240620';
+    const nvidiaApiKey = localStorage.getItem('nvidiaApiKey') || '';
+    const nvidiaUrl = localStorage.getItem('nvidiaUrl') || 'https://integrate.api.nvidia.com/v1';
+    const nvidiaModel = localStorage.getItem('nvidiaModel') || 'meta/llama-3.1-70b-instruct';
     const resumeText = localStorage.getItem('resumeText') || '';
     const jobDescription = localStorage.getItem('jobDescription') || '';
 
@@ -346,8 +352,14 @@ export default function StealthMode() {
             lmStudioUrl,
             lmStudioModel,
             geminiApiKey,
+            geminiModel,
             openaiApiKey,
+            openaiModel,
             anthropicApiKey,
+            anthropicModel,
+            nvidiaApiKey,
+            nvidiaModel,
+            nvidiaUrl,
             resumeText,
             jobDescription,
             audioBase64: base64Audio,

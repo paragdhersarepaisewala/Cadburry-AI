@@ -117,8 +117,8 @@ app.whenReady().then(() => {
     return await desktopCapturer.getSources({ types: ['screen', 'window'] });
   });
 
-  ipcMain.handle('test-connection', async (event, provider, url, key) => {
-    return await testLLMConnection(provider, url, key);
+  ipcMain.handle('test-connection', async (event, provider, url, key, customModel) => {
+    return await testLLMConnection(provider, url, key, customModel);
   });
 
   ipcMain.handle('call-llm-api', async (event, params) => {
