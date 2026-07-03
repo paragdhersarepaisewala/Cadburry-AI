@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, FileText, Mic, Play, Monitor, Link, Cpu, Key, MessageSquare } from 'lucide-react';
+import { Settings, FileText, Mic, Play, Monitor, Link, Cpu, Key, MessageSquare, Globe } from 'lucide-react';
 
 export default function Dashboard() {
   const [model, setModel] = useState(() => localStorage.getItem('model') || 'lmstudio');
@@ -14,6 +14,7 @@ export default function Dashboard() {
   const [nvidiaApiKey, setNvidiaApiKey] = useState(() => localStorage.getItem('nvidiaApiKey') || '');
   const [nvidiaUrl, setNvidiaUrl] = useState(() => localStorage.getItem('nvidiaUrl') || 'https://integrate.api.nvidia.com/v1');
   const [nvidiaModel, setNvidiaModel] = useState(() => localStorage.getItem('nvidiaModel') || 'meta/llama-3.1-70b-instruct');
+  const [tavilyApiKey, setTavilyApiKey] = useState(() => localStorage.getItem('tavilyApiKey') || '');
   const [resumeText, setResumeText] = useState(() => localStorage.getItem('resumeText') || '');
   const [jobDescription, setJobDescription] = useState(() => localStorage.getItem('jobDescription') || '');
   
@@ -50,6 +51,7 @@ export default function Dashboard() {
     localStorage.setItem('nvidiaApiKey', nvidiaApiKey);
     localStorage.setItem('nvidiaUrl', nvidiaUrl);
     localStorage.setItem('nvidiaModel', nvidiaModel);
+    localStorage.setItem('tavilyApiKey', tavilyApiKey);
     localStorage.setItem('resumeText', resumeText);
     localStorage.setItem('jobDescription', jobDescription);
     
@@ -59,7 +61,7 @@ export default function Dashboard() {
     localStorage.setItem('whisperModel', whisperModel);
   }, [
     model, lmStudioUrl, lmStudioModel, geminiApiKey, geminiModel, openaiApiKey, openaiModel, 
-    anthropicApiKey, anthropicModel, nvidiaApiKey, nvidiaUrl, nvidiaModel, resumeText, jobDescription, 
+    anthropicApiKey, anthropicModel, nvidiaApiKey, nvidiaUrl, nvidiaModel, tavilyApiKey, resumeText, jobDescription, 
     sttProvider, whisperUrl, whisperApiKey, whisperModel
   ]);
 
@@ -96,6 +98,13 @@ export default function Dashboard() {
           result += '\n[STT Test] Testing Whisper API...';
           const sttRes = await window.electronAPI.testConnection('whisper', whisperUrl, whisperApiKey);
           result += `\n[STT Test] ${sttRes}`;
+        }
+
+        // Also test Tavily Search if configured
+        if (tavilyApiKey) {
+          result += '\n[Search Test] Testing Tavily Search...';
+          const searchRes = await window.electronAPI.testConnection('tavily', '', tavilyApiKey);
+          result += `\n[Search Test] ${searchRes}`;
         }
         
         setStatus('success');
@@ -437,6 +446,32 @@ export default function Dashboard() {
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Tavily Search Config */}
+            <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800 space-y-6">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <Globe className="text-blue-400" />
+                Real-Time Web Search (RAG)
+              </h2>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">
+                    Tavily Search API Key (Optional)
+                  </label>
+                  <input 
+                    type="password"
+                    value={tavilyApiKey}
+                    onChange={(e) => setTavilyApiKey(e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-gray-200 text-sm focus:outline-none focus:border-indigo-500"
+                    placeholder="tvly-..."
+                  />
+                  <p className="text-[10px] text-gray-500 mt-1.5 leading-relaxed">
+                    If provided, the assistant will automatically search the web for technical specifications, latest library releases, or documentation when real-time information is needed.
+                  </p>
+                </div>
               </div>
             </div>
 

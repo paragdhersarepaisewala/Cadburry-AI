@@ -279,6 +279,7 @@ export default function StealthMode() {
     const nvidiaApiKey = localStorage.getItem('nvidiaApiKey') || '';
     const nvidiaUrl = localStorage.getItem('nvidiaUrl') || 'https://integrate.api.nvidia.com/v1';
     const nvidiaModel = localStorage.getItem('nvidiaModel') || 'meta/llama-3.1-70b-instruct';
+    const tavilyApiKey = localStorage.getItem('tavilyApiKey') || '';
     const resumeText = localStorage.getItem('resumeText') || '';
     const jobDescription = localStorage.getItem('jobDescription') || '';
 
@@ -360,6 +361,7 @@ export default function StealthMode() {
             nvidiaApiKey,
             nvidiaModel,
             nvidiaUrl,
+            tavilyApiKey,
             resumeText,
             jobDescription,
             audioBase64: base64Audio,

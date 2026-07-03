@@ -11,10 +11,135 @@ export interface APIParams {
   nvidiaApiKey?: string;
   nvidiaModel?: string;
   nvidiaUrl?: string;
+  tavilyApiKey?: string;
   resumeText: string;
   jobDescription: string;
   audioBase64: string;
   textTranscript?: string; // Optional: if audio is transcribed to text first
+}
+
+async function searchTavily(query: string, apiKey: string): Promise<string> {
+  try {
+    const res = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        api_key: apiKey,
+        query: query,
+        search_depth: 'basic'
+      })
+    });
+    if (!res.ok) {
+      throw new Error(`Tavily HTTP error: ${res.status}`);
+    }
+    const data = await res.json() as any;
+    const snippets = data.results?.map((r: any) => `- ${r.title}: ${r.content} (${r.url})`).join('\n') || 'No results.';
+    return snippets;
+  } catch (err: any) {
+    console.error('Tavily search failed:', err);
+    return `Search failed: ${err.message}`;
+  }
+}
+
+async function runClassifier(provider: string, params: APIParams, prompt: string): Promise<string> {
+  try {
+    if (provider === 'google') {
+      const selectedModel = params.geminiModel || 'gemini-2.5-flash';
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${params.geminiApiKey}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { maxOutputTokens: 20, temperature: 0.0 }
+        })
+      });
+      if (!res.ok) return 'NO';
+      const data = await res.json() as any;
+      return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || 'NO';
+    }
+    
+    if (provider === 'openai') {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${params.openaiApiKey}`
+        },
+        body: JSON.stringify({
+          model: params.openaiModel || 'gpt-4o-mini',
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 20,
+          temperature: 0.0
+        })
+      });
+      if (!res.ok) return 'NO';
+      const data = await res.json() as any;
+      return data.choices?.[0]?.message?.content?.trim() || 'NO';
+    }
+
+    if (provider === 'anthropic') {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-api-key': params.anthropicApiKey || '',
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: params.anthropicModel || 'claude-3-5-sonnet-20240620',
+          max_tokens: 25,
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.0
+        })
+      });
+      if (!res.ok) return 'NO';
+      const data = await res.json() as any;
+      return data.content?.[0]?.text?.trim() || 'NO';
+    }
+
+    if (provider === 'nvidia') {
+      const baseUrl = (params.nvidiaUrl || 'https://integrate.api.nvidia.com/v1').replace(/\/$/, '');
+      const res = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${params.nvidiaApiKey}`
+        },
+        body: JSON.stringify({
+          model: params.nvidiaModel || 'meta/llama-3.1-70b-instruct',
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 20,
+          temperature: 0.0
+        })
+      });
+      if (!res.ok) return 'NO';
+      const data = await res.json() as any;
+      return data.choices?.[0]?.message?.content?.trim() || 'NO';
+    }
+
+    if (provider === 'lmstudio') {
+      const url = `${params.lmStudioUrl.replace(/\/$/, '')}/chat/completions`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: params.lmStudioModel || 'google/gemma-4-e2b',
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 20,
+          temperature: 0.0
+        })
+      });
+      if (!res.ok) return 'NO';
+      const data = await res.json() as any;
+      return data.choices?.[0]?.message?.content?.trim() || 'NO';
+    }
+  } catch (e) {
+    console.error('Classifier failed:', e);
+  }
+  return 'NO';
 }
 
 export async function transcribeAudio(
@@ -23,14 +148,11 @@ export async function transcribeAudio(
   model: string,
   audioBase64: string
 ): Promise<string> {
-  // If the user pasted the complete endpoint (including /audio/transcriptions), use it directly.
-  // Otherwise, append /audio/transcriptions to the base URL.
   const cleanUrl = url.trim().replace(/\/$/, '');
   const targetUrl = cleanUrl.endsWith('/audio/transcriptions') 
     ? cleanUrl 
     : `${cleanUrl}/audio/transcriptions`;
   
-  // Convert base64 to Blob
   const buffer = Buffer.from(audioBase64, 'base64');
   const blob = new Blob([buffer], { type: 'audio/wav' });
   
@@ -69,11 +191,33 @@ export async function sendAudioToLLM(params: APIParams): Promise<string> {
     nvidiaApiKey,
     nvidiaModel,
     nvidiaUrl,
+    tavilyApiKey,
     resumeText,
     jobDescription,
     audioBase64,
     textTranscript,
   } = params;
+
+  // 1. Perform Real-time Web Search if Tavily API Key is configured
+  let searchContext = '';
+  if (tavilyApiKey && textTranscript && textTranscript.trim()) {
+    const classifierPrompt = `Analyze this interview transcript: "${textTranscript}"
+Does answering this require searching for real-time information (e.g. latest version releases, documentation, recent events, or tech details)? 
+If YES, output ONLY the search query to run (e.g., "React 19 new features").
+If NO, output ONLY the word "NO".
+Do not write anything else.`;
+    
+    console.log('Tavily: Running classifier to determine if search is required...');
+    const searchDecision = await runClassifier(provider, params, classifierPrompt);
+    console.log(`Tavily: Classifier output: "${searchDecision}"`);
+    
+    if (searchDecision && searchDecision.toUpperCase() !== 'NO' && searchDecision.length > 2) {
+      console.log(`Tavily: Performing search for: "${searchDecision}"`);
+      const searchResults = await searchTavily(searchDecision, tavilyApiKey);
+      searchContext = `\n\nREAL-TIME SEARCH RESULTS (Use this search context to answer accurately):\n---\n${searchResults}\n---\n`;
+      console.log('Tavily: Search context successfully embedded.');
+    }
+  }
 
   const promptText = `
 You are a hidden real-time interview assistant. Your goal is to help the candidate answer the interviewer's questions confidently, naturally, and professionally.
@@ -86,7 +230,7 @@ ${jobDescription || 'Not provided.'}
 CANDIDATE RESUME:
 ${resumeText || 'Not provided.'}
 ---
-
+${searchContext}
 INSTRUCTIONS:
 1. Listen to or read the provided interview segment.
 2. If the segment is NOT an actual interview question (e.g., it is a greeting like "Hello", small talk, agreements like "mhm", "yes", "okay", or generic feedback like "Thank you", "Great", "Nice"), DO NOT output a SUGGESTED ANSWER. Instead, output:
@@ -103,7 +247,6 @@ INSTRUCTIONS:
    - "SUGGESTED ANSWER": (The conversational, simple speaking script)
 `;
 
-  // Pre-process transcript input. Text models require STT.
   if (provider !== 'google' && !textTranscript) {
     throw new Error(`${provider.toUpperCase()} provider currently requires Speech-to-Text (STT) to be enabled on the dashboard.`);
   }
@@ -367,7 +510,6 @@ export async function testLLMConnection(provider: string, url: string, key: stri
     if (!key) {
       throw new Error('Anthropic API Key is required.');
     }
-    // Test authentication with Anthropic
     const modelName = customModel || 'claude-3-5-sonnet-20240620';
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -407,6 +549,19 @@ export async function testLLMConnection(provider: string, url: string, key: stri
       throw new Error('Invalid Nvidia API Key or Endpoint URL');
     }
     return 'Nvidia NIM connection verified successfully!';
+  } else if (provider === 'tavily') {
+    if (!key) {
+      throw new Error('Tavily API Key is required.');
+    }
+    const res = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key: key, query: 'test', search_depth: 'basic' })
+    });
+    if (!res.ok) {
+      throw new Error('Invalid Tavily API Key');
+    }
+    return 'Tavily Search API connection verified successfully!';
   } else if (provider === 'whisper') {
     if (!key) {
       throw new Error('Whisper API Key is required.');
