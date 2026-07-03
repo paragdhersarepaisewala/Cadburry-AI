@@ -23,7 +23,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (window.electronAPI && window.electronAPI.onStealthLockStatus) {
+      console.log('Dashboard: registering onStealthLockStatus listener');
       return window.electronAPI.onStealthLockStatus((locked) => {
+        console.log('Dashboard: received stealth-lock-status =', locked);
         setIsLocked(locked);
       });
     }
@@ -104,7 +106,10 @@ export default function Dashboard() {
           <div className="flex gap-4">
             {isLocked && (
               <button 
-                onClick={() => window.electronAPI.unlockStealthWindow()}
+                onClick={() => {
+                  console.log('Dashboard: Unlock Overlay clicked, invoking window.electronAPI.unlockStealthWindow()');
+                  window.electronAPI.unlockStealthWindow();
+                }}
                 className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 transition-colors px-6 py-3 rounded-xl font-bold shadow-md"
               >
                 Unlock Overlay

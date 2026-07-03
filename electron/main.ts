@@ -85,18 +85,31 @@ app.whenReady().then(() => {
   });
 
   ipcMain.on('lock-stealth-window', () => {
+    console.log('Main process: lock-stealth-window event received');
     if (stealthWindow) {
       stealthWindow.setIgnoreMouseEvents(true, { forward: true });
       stealthWindow.webContents.send('stealth-lock-status', true);
       mainWindow?.webContents.send('stealth-lock-status', true);
+      console.log('Main process: stealthWindow set to ignore mouse events (true)');
+    } else {
+      console.warn('Main process: lock-stealth-window failed, stealthWindow is null');
     }
   });
 
   ipcMain.on('unlock-stealth-window', () => {
+    console.log('Main process: unlock-stealth-window event received');
     if (stealthWindow) {
       stealthWindow.setIgnoreMouseEvents(false);
+      // Toggle visibility to force Windows OS to reset hit-testing bounds for transparency
+      stealthWindow.hide();
+      stealthWindow.show();
+      stealthWindow.focus();
+      
       stealthWindow.webContents.send('stealth-lock-status', false);
       mainWindow?.webContents.send('stealth-lock-status', false);
+      console.log('Main process: stealthWindow set to ignore mouse events (false) + forced repaint');
+    } else {
+      console.warn('Main process: unlock-stealth-window failed, stealthWindow is null');
     }
   });
 
