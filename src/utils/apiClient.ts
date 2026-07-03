@@ -85,7 +85,7 @@ INSTRUCTIONS:
     if (!geminiApiKey) {
       throw new Error('Gemini API Key is missing.');
     }
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
     const response = await fetch(url, {
       method: 'POST',
       headers: {
