@@ -13,6 +13,7 @@ declare global {
       lockStealthWindow: () => void;
       unlockStealthWindow: () => void;
       onStealthLockStatus: (callback: (locked: boolean) => void) => () => void;
+      onTogglePin: (callback: () => void) => () => void;
     };
   }
 }

@@ -6,6 +6,8 @@ export default function Dashboard() {
   const [lmStudioUrl, setLmStudioUrl] = useState(() => localStorage.getItem('lmStudioUrl') || 'http://localhost:1234');
   const [lmStudioModel, setLmStudioModel] = useState(() => localStorage.getItem('lmStudioModel') || 'google/gemma-4-e2b');
   const [geminiApiKey, setGeminiApiKey] = useState(() => localStorage.getItem('geminiApiKey') || '');
+  const [openaiApiKey, setOpenaiApiKey] = useState(() => localStorage.getItem('openaiApiKey') || '');
+  const [anthropicApiKey, setAnthropicApiKey] = useState(() => localStorage.getItem('anthropicApiKey') || '');
   const [resumeText, setResumeText] = useState(() => localStorage.getItem('resumeText') || '');
   const [jobDescription, setJobDescription] = useState(() => localStorage.getItem('jobDescription') || '');
   
@@ -32,6 +34,8 @@ export default function Dashboard() {
     localStorage.setItem('lmStudioUrl', lmStudioUrl);
     localStorage.setItem('lmStudioModel', lmStudioModel);
     localStorage.setItem('geminiApiKey', geminiApiKey);
+    localStorage.setItem('openaiApiKey', openaiApiKey);
+    localStorage.setItem('anthropicApiKey', anthropicApiKey);
     localStorage.setItem('resumeText', resumeText);
     localStorage.setItem('jobDescription', jobDescription);
     
@@ -39,7 +43,7 @@ export default function Dashboard() {
     localStorage.setItem('whisperUrl', whisperUrl);
     localStorage.setItem('whisperApiKey', whisperApiKey);
     localStorage.setItem('whisperModel', whisperModel);
-  }, [model, lmStudioUrl, lmStudioModel, geminiApiKey, resumeText, jobDescription, sttProvider, whisperUrl, whisperApiKey, whisperModel]);
+  }, [model, lmStudioUrl, lmStudioModel, geminiApiKey, openaiApiKey, anthropicApiKey, resumeText, jobDescription, sttProvider, whisperUrl, whisperApiKey, whisperModel]);
 
   const handleStart = () => {
     if (window.electronAPI) {
@@ -57,8 +61,14 @@ export default function Dashboard() {
         let result = '';
         if (model === 'lmstudio') {
           result = await window.electronAPI.testConnection('lmstudio', lmStudioUrl, '');
+        } else if (model === 'gemma') {
+          result = await window.electronAPI.testConnection('gemma', '', '');
         } else if (model === 'google') {
           result = await window.electronAPI.testConnection('google', '', geminiApiKey);
+        } else if (model === 'openai') {
+          result = await window.electronAPI.testConnection('openai', '', openaiApiKey);
+        } else if (model === 'anthropic') {
+          result = await window.electronAPI.testConnection('anthropic', '', anthropicApiKey);
         }
         
         // Also test STT connection if configured
@@ -215,6 +225,42 @@ export default function Dashboard() {
                         onChange={(e) => setGeminiApiKey(e.target.value)}
                         className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-gray-200 text-sm focus:outline-none focus:border-indigo-500"
                         placeholder="AIzaSy..."
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* OpenAI API Key */}
+                {model === 'openai' && (
+                  <div className="space-y-4 pt-2 border-t border-gray-800">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">
+                        OpenAI API Key
+                      </label>
+                      <input 
+                        type="password"
+                        value={openaiApiKey}
+                        onChange={(e) => setOpenaiApiKey(e.target.value)}
+                        className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-gray-200 text-sm focus:outline-none focus:border-indigo-500"
+                        placeholder="sk-proj-..."
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Anthropic API Key */}
+                {model === 'anthropic' && (
+                  <div className="space-y-4 pt-2 border-t border-gray-800">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">
+                        Anthropic API Key
+                      </label>
+                      <input 
+                        type="password"
+                        value={anthropicApiKey}
+                        onChange={(e) => setAnthropicApiKey(e.target.value)}
+                        className="w-full bg-gray-800 border border-gray-700 rounded-xl p-3 text-gray-200 text-sm focus:outline-none focus:border-indigo-500"
+                        placeholder="sk-ant-..."
                       />
                     </div>
                   </div>

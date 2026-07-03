@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, desktopCapturer } from 'electron';
+import { app, BrowserWindow, ipcMain, desktopCapturer, globalShortcut } from 'electron';
 import * as path from 'path';
 import { testLLMConnection, sendAudioToLLM, transcribeAudio } from './apiClient';
 
@@ -62,6 +62,13 @@ function createStealthWindow() {
 app.whenReady().then(() => {
   createMainWindow();
 
+  // Register global hotkey for pinning the response (Ctrl+Alt+P)
+  globalShortcut.register('CommandOrControl+Alt+P', () => {
+    if (stealthWindow) {
+      stealthWindow.webContents.send('toggle-stealth-pin');
+    }
+  });
+
   ipcMain.on('start-stealth-mode', () => {
     createStealthWindow();
   });
@@ -120,4 +127,9 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+app.on('will-quit', () => {
+  // Unregister all global shortcuts when application exits
+  globalShortcut.unregisterAll();
 });

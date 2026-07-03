@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { X, GripHorizontal, Activity, AlertCircle, Download, Monitor, Lock, Unlock } from 'lucide-react';
+import { X, GripHorizontal, Activity, AlertCircle, Download, Monitor, Lock, Pin } from 'lucide-react';
 import { SlidingAudioBuffer } from '../utils/audioBuffer';
 import { initLocalWhisper, transcribeLocalAudio } from '../utils/localTranscriber';
 
@@ -42,23 +42,48 @@ export default function StealthMode() {
   const [systemVol, setSystemVol] = useState(0);
   const [hasSystemAudioTrack, setHasSystemAudioTrack] = useState(false);
 
-  // Stateful Stealth Lock
+  // Stateful Stealth Lock & Pinning
   const [isLocked, setIsLocked] = useState(false);
+  const [isPinned, setIsPinned] = useState(false);
+  
+  const isPinnedRef = useRef(false);
 
   // Audio nodes and refs
   const audioContextRef = useRef<AudioContext | null>(null);
   const streamsRef = useRef<MediaStream[]>([]);
-  const slidingBufferRef = useRef<SlidingAudioBuffer>(new SlidingAudioBuffer(20, 16000));
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const slidingBufferRef = useRef<SlidingAudioBuffer>(new SlidingAudioBuffer(30, 16000));
   const volumeRef = useRef({ system: 0 });
+
+  // Voice Activity Detection (VAD) state
+  const vadState = useRef({
+    isSpeaking: false,
+    lastActiveTime: 0,
+    hasSpeechHappened: false
+  });
+  const processingRef = useRef(false);
 
   useEffect(() => {
     startAudioPipeline();
 
-    // Listen to Lock/Unlock status changes from Electron Main
+    // Listen to Lock/Unlock status
     if (window.electronAPI && window.electronAPI.onStealthLockStatus) {
       const unsubscribe = window.electronAPI.onStealthLockStatus((locked) => {
         setIsLocked(locked);
+      });
+      return () => {
+        unsubscribe();
+      };
+    }
+  }, []);
+
+  useEffect(() => {
+    // Listen to Global Pin shortcut status
+    if (window.electronAPI && window.electronAPI.onTogglePin) {
+      const unsubscribe = window.electronAPI.onTogglePin(() => {
+        const nextPin = !isPinnedRef.current;
+        isPinnedRef.current = nextPin;
+        setIsPinned(nextPin);
+        console.log('Stealth Lock Pin state:', nextPin ? 'PINNED' : 'UNPINNED');
       });
       return () => {
         unsubscribe();
@@ -80,9 +105,6 @@ export default function StealthMode() {
   }, []);
 
   const cleanupAudioPipeline = () => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
     streamsRef.current.forEach(stream => {
       stream.getTracks().forEach(track => track.stop());
     });
@@ -183,27 +205,52 @@ export default function StealthMode() {
         const inputData = e.inputBuffer.getChannelData(0);
         
         let sum = 0;
-        let maxVal = 0;
         for (let i = 0; i < inputData.length; i++) {
-          const val = Math.abs(inputData[i]);
-          if (val > maxVal) maxVal = val;
-          sum += val * val;
+          sum += inputData[i] * inputData[i];
         }
 
         const rms = Math.sqrt(sum / inputData.length);
         volumeRef.current = { system: rms };
 
-        const resampled = resampleBuffer(inputData, audioCtx.sampleRate, 16000);
-        slidingBufferRef.current.append(resampled);
+        // Do not process audio if responses are pinned/locked
+        if (isPinnedRef.current) {
+          volumeRef.current = { system: 0 };
+          return;
+        }
+
+        const threshold = 0.008;
+        const now = Date.now();
+
+        if (rms > threshold) {
+          if (!vadState.current.isSpeaking) {
+            console.log('VAD: Speech detected. Recording session...');
+            vadState.current.isSpeaking = true;
+            vadState.current.hasSpeechHappened = true;
+            slidingBufferRef.current.clear();
+          }
+          vadState.current.lastActiveTime = now;
+        }
+
+        if (vadState.current.isSpeaking) {
+          const resampled = resampleBuffer(inputData, audioCtx.sampleRate, 16000);
+          slidingBufferRef.current.append(resampled);
+
+          if (rms <= threshold && (now - vadState.current.lastActiveTime) > 1500) {
+            console.log('VAD: Silence detected. Triggering question processing...');
+            vadState.current.isSpeaking = false;
+            
+            setTimeout(() => {
+              processQuestion();
+            }, 0);
+          }
+        }
       };
 
       systemSourceNode.connect(processor);
       processor.connect(audioCtx.destination);
 
       setIsRecording(true);
-      setTranscript('Listening to system audio...');
-
-      startQueryInterval();
+      setTranscript('Waiting for interviewer to speak...');
 
     } catch (err: any) {
       console.error('Audio capture error:', err);
@@ -212,11 +259,20 @@ export default function StealthMode() {
     }
   };
 
-  const startQueryInterval = () => {
+  const processQuestion = async () => {
+    if (isPinnedRef.current) {
+      console.log('VAD loop ignored: response is pinned.');
+      return;
+    }
+    if (processingRef.current || slidingBufferRef.current.isEmpty()) return;
+    processingRef.current = true;
+
     const provider = localStorage.getItem('model') || 'lmstudio';
     const lmStudioUrl = localStorage.getItem('lmStudioUrl') || 'http://localhost:1234';
     const lmStudioModel = localStorage.getItem('lmStudioModel') || 'google/gemma-4-e2b';
     const geminiApiKey = localStorage.getItem('geminiApiKey') || '';
+    const openaiApiKey = localStorage.getItem('openaiApiKey') || '';
+    const anthropicApiKey = localStorage.getItem('anthropicApiKey') || '';
     const resumeText = localStorage.getItem('resumeText') || '';
     const jobDescription = localStorage.getItem('jobDescription') || '';
 
@@ -225,56 +281,62 @@ export default function StealthMode() {
     const whisperApiKey = localStorage.getItem('whisperApiKey') || '';
     const whisperModel = localStorage.getItem('whisperModel') || 'whisper-large-v3';
 
-    intervalRef.current = setInterval(async () => {
-      if (slidingBufferRef.current.isEmpty()) {
-        console.log('Skipping query: sliding audio buffer is empty.');
+    try {
+      let currentTranscript = '';
+      const samples = slidingBufferRef.current.getRawSamples();
+      
+      let maxAmp = 0;
+      for (let i = 0; i < samples.length; i++) {
+        const abs = Math.abs(samples[i]);
+        if (abs > maxAmp) maxAmp = abs;
+      }
+
+      console.log(`VAD processing: ${samples.length} samples. Max amplitude: ${maxAmp.toFixed(4)}`);
+
+      if (maxAmp < 0.001) {
+        console.log('Processing skipped: session audio is silent.');
+        setTranscript('Waiting for interviewer to speak...');
+        processingRef.current = false;
         return;
       }
 
-      try {
-        let currentTranscript = '';
+      // Step 1: Transcribe
+      if (sttProvider === 'local') {
+        setTranscript('Transcribing...');
+        const t0 = performance.now();
+        currentTranscript = await transcribeLocalAudio(samples);
+        const t1 = performance.now();
+        console.log(`Local Whisper transcribed: "${currentTranscript}" in ${Math.round(t1 - t0)}ms`);
+      } else if (sttProvider === 'whisper') {
+        setTranscript('Transcribing...');
+        const wavBlob = slidingBufferRef.current.getWavBlob();
+        const base64Audio = await blobToBase64(wavBlob);
+        currentTranscript = await window.electronAPI.transcribeAudio(
+          whisperUrl,
+          whisperApiKey,
+          whisperModel,
+          base64Audio
+        );
+        console.log(`Whisper API transcribed: "${currentTranscript}"`);
+      }
 
-        if (sttProvider === 'local') {
-          const samples = slidingBufferRef.current.getRawSamples();
-          
-          let maxAmp = 0;
-          for (let i = 0; i < samples.length; i++) {
-            const abs = Math.abs(samples[i]);
-            if (abs > maxAmp) maxAmp = abs;
-          }
-          console.log(`Local Whisper processing: ${samples.length} samples. Max amplitude: ${maxAmp.toFixed(4)}`);
-
-          if (maxAmp < 0.001) {
-            console.log('Local Whisper skipped: audio buffer contains near silence.');
-            setTranscript('Listening (silence)...');
-            return;
-          }
-
-          setTranscript('Transcribing...');
-          const t0 = performance.now();
-          currentTranscript = await transcribeLocalAudio(samples);
-          const t1 = performance.now();
-          
-          console.log(`Local Whisper completed in ${Math.round(t1 - t0)}ms. Output: "${currentTranscript}"`);
+      // Filter out short noise/feedback from triggering LLM queries (e.g. less than 4 words)
+      if (sttProvider !== 'none') {
+        const words = currentTranscript.trim().split(/\s+/).filter(w => w.length > 0);
+        if (words.length < 4) {
+          console.log(`LLM query skipped: text "${currentTranscript}" is too short (${words.length} words) to be an interview query.`);
           setTranscript(currentTranscript || 'Listening...');
-        } else if (sttProvider === 'whisper') {
-          setTranscript('Transcribing...');
-          const wavBlob = slidingBufferRef.current.getWavBlob();
-          const base64Audio = await blobToBase64(wavBlob);
-          
-          currentTranscript = await window.electronAPI.transcribeAudio(
-            whisperUrl,
-            whisperApiKey,
-            whisperModel,
-            base64Audio
-          );
-          setTranscript(currentTranscript || 'Listening...');
-        }
-
-        if (sttProvider !== 'none' && !currentTranscript.trim()) {
+          processingRef.current = false;
           return;
         }
+      }
 
+      setTranscript(currentTranscript);
+
+      // Step 2: Request suggestions
+      if (sttProvider === 'none' || currentTranscript.trim()) {
+        setAiResponse('Thinking of response...');
+        
         const wavBlob = slidingBufferRef.current.getWavBlob();
         const base64Audio = await blobToBase64(wavBlob);
 
@@ -284,6 +346,8 @@ export default function StealthMode() {
             lmStudioUrl,
             lmStudioModel,
             geminiApiKey,
+            openaiApiKey,
+            anthropicApiKey,
             resumeText,
             jobDescription,
             audioBase64: base64Audio,
@@ -291,13 +355,20 @@ export default function StealthMode() {
           };
 
           const response = await window.electronAPI.callLLM(params);
-          parseResponse(response);
+          // Only parse/update suggestions if it hasn't been pinned in the meantime
+          if (!isPinnedRef.current) {
+            parseResponse(response);
+          }
         }
-      } catch (err: any) {
-        console.error('Inference pipeline error:', err);
-        setAiResponse(`Inference error: ${err.message}`);
       }
-    }, 5000);
+    } catch (err: any) {
+      console.error('Question processing pipeline error:', err);
+      setAiResponse(`Inference error: ${err.message}`);
+      setTranscript('Error in speech analysis.');
+    } finally {
+      processingRef.current = false;
+      slidingBufferRef.current.clear();
+    }
   };
 
   const parseResponse = (rawResponse: string) => {
@@ -331,6 +402,12 @@ export default function StealthMode() {
         window.electronAPI.lockStealthWindow();
       }
     }
+  };
+
+  const togglePin = () => {
+    const nextPin = !isPinned;
+    isPinnedRef.current = nextPin;
+    setIsPinned(nextPin);
   };
 
   return (
@@ -384,6 +461,19 @@ export default function StealthMode() {
               />
             </div>
 
+            {/* Manual Pin Toggle */}
+            <button 
+              onClick={togglePin}
+              className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
+                isPinned 
+                  ? 'bg-amber-600 text-white' 
+                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              }`}
+            >
+              <Pin size={12} />
+              {isPinned ? 'Pinned' : 'Pin'}
+            </button>
+
             <button 
               onClick={toggleLock}
               className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
@@ -406,8 +496,9 @@ export default function StealthMode() {
           <div className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
             <span>ASSISTANT ACTIVE</span>
+            {isPinned && <span className="bg-amber-950/80 text-amber-400 border border-amber-500/20 px-1 py-0.5 rounded ml-1 text-[8px]">PINNED 📌</span>}
           </div>
-          <div>LOCKED (UNLOCK VIA DASHBOARD)</div>
+          <div>LOCKED (SHORTCUT: CTRL+ALT+P TO PIN/UNPIN)</div>
         </div>
       )}
 
@@ -433,7 +524,7 @@ export default function StealthMode() {
             </div>
           )}
           <div className="text-[10px] text-indigo-300/80 bg-indigo-950/20 border border-indigo-500/10 p-2 rounded-xl text-center mb-2">
-            💡 Position this window, resize it, then click <b>Lock</b> to enable click-through stealth.
+            💡 Position this window, resize it, then click <b>Lock</b>. Toggle pin status using <b>Ctrl+Alt+P</b>.
           </div>
         </>
       )}
@@ -449,11 +540,11 @@ export default function StealthMode() {
 
       {/* AI Suggestion Area */}
       <div 
-        className={`bg-gradient-to-r transition-all duration-300 ${
+        className={`bg-gradient-to-r transition-all duration-350 ${
           isLocked 
             ? 'h-40 from-indigo-950/40 to-purple-950/40 border-indigo-500/10 rounded-xl p-3 border' 
             : 'h-48 from-indigo-950/70 to-purple-950/70 border-indigo-500/30 rounded-2xl p-4 border overflow-y-auto'
-        }`}
+        } ${isPinned ? 'border-amber-500/30 ring-1 ring-amber-500/10' : ''}`}
       >
         {aiResponse ? (
           <p className="text-sm font-semibold text-blue-100 leading-relaxed whitespace-pre-line">

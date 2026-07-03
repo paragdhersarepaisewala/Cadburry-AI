@@ -17,5 +17,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const listener = (event: any, locked: boolean) => callback(locked);
     ipcRenderer.on('stealth-lock-status', listener);
     return () => ipcRenderer.removeListener('stealth-lock-status', listener);
+  },
+  onTogglePin: (callback: () => void) => {
+    const listener = () => callback();
+    ipcRenderer.on('toggle-stealth-pin', listener);
+    return () => ipcRenderer.removeListener('toggle-stealth-pin', listener);
   }
 });

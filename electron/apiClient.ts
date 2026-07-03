@@ -3,6 +3,8 @@ export interface APIParams {
   lmStudioUrl: string;
   lmStudioModel: string;
   geminiApiKey: string;
+  openaiApiKey?: string;
+  anthropicApiKey?: string;
   resumeText: string;
   jobDescription: string;
   audioBase64: string;
@@ -15,7 +17,12 @@ export async function transcribeAudio(
   model: string,
   audioBase64: string
 ): Promise<string> {
-  const targetUrl = `${url.replace(/\/$/, '')}/audio/transcriptions`;
+  // If the user pasted the complete endpoint (including /audio/transcriptions), use it directly.
+  // Otherwise, append /audio/transcriptions to the base URL.
+  const cleanUrl = url.trim().replace(/\/$/, '');
+  const targetUrl = cleanUrl.endsWith('/audio/transcriptions') 
+    ? cleanUrl 
+    : `${cleanUrl}/audio/transcriptions`;
   
   // Convert base64 to Blob
   const buffer = Buffer.from(audioBase64, 'base64');
@@ -48,6 +55,8 @@ export async function sendAudioToLLM(params: APIParams): Promise<string> {
     lmStudioUrl,
     lmStudioModel,
     geminiApiKey,
+    openaiApiKey,
+    anthropicApiKey,
     resumeText,
     jobDescription,
     audioBase64,
@@ -67,43 +76,23 @@ ${resumeText || 'Not provided.'}
 ---
 
 INSTRUCTIONS:
-1. Analyze the interview conversation.
-2. Formulate a strong, concise, and structured response using the candidate's resume and job description.
-3. Output your answer in two sections:
-   - "TRANSCRIBED QUESTION": (What you heard / latest interviewer question)
-   - "SUGGESTED ANSWER": (Bullet points or a brief script the candidate can speak naturally)
-4. Be concise and speed-focused.
+1. Listen to or read the provided interview segment.
+2. If the segment is NOT an actual interview question (e.g., it is a greeting like "Hello", small talk, agreements like "mhm", "yes", "okay", or generic feedback like "Thank you", "Great", "Nice"), DO NOT output a SUGGESTED ANSWER. Instead, output a brief one-word or very short acknowledgement, like:
+   - "TRANSCRIBED QUESTION": [The greeting/feedback]
+   - "SUGGESTED ANSWER": (Acknowledge and keep talking)
+3. If it is an actual interview question, formulate a strong, structured, and concise response using the candidate's experience from the resume and the criteria from the job description.
+4. Output your answer in exactly this format:
+   - "TRANSCRIBED QUESTION": (Summarize the question you heard)
+   - "SUGGESTED ANSWER": (3-4 bullet points or a brief natural-sounding response script)
+5. Be extremely concise. Limit response to the requested format only.
 `;
 
-  // If we already have a text transcript (e.g. from Whisper), we pass it as text.
-  // Otherwise, we send it as a multimodal audio request.
-  const userContent: any[] = [];
-  
-  if (textTranscript) {
-    userContent.push({
-      type: 'text',
-      text: `Conversation Log So Far:\n${textTranscript}\n\nTask: Formulate the response based on the above instruction.`,
-    });
-  } else {
-    // Multimodal audio request (e.g. Gemini native)
-    userContent.push({
-      type: 'text',
-      text: promptText,
-    });
-    
-    if (provider === 'google') {
-      // Handled separately below
-    } else {
-      // LM Studio (as image_url fallback)
-      userContent.push({
-        type: 'image_url',
-        image_url: {
-          url: `data:image/png;base64,${audioBase64}`,
-        },
-      });
-    }
+  // Pre-process transcript input. Text models require STT.
+  if (provider !== 'google' && !textTranscript) {
+    throw new Error(`${provider.toUpperCase()} provider currently requires Speech-to-Text (STT) to be enabled on the dashboard.`);
   }
 
+  // 1. LM Studio
   if (provider === 'lmstudio') {
     const url = `${lmStudioUrl.replace(/\/$/, '')}/chat/completions`;
     const response = await fetch(url, {
@@ -120,7 +109,7 @@ INSTRUCTIONS:
           },
           {
             role: 'user',
-            content: textTranscript ? userContent[0].text : userContent,
+            content: `Conversation Log So Far:\n${textTranscript}`,
           },
         ],
         temperature: 0.3,
@@ -135,7 +124,111 @@ INSTRUCTIONS:
     const data = await response.json() as any;
     return data.choices?.[0]?.message?.content || 'No suggestion received.';
   } 
+
+  // 2. Ollama (Local Gemma 2)
+  if (provider === 'gemma') {
+    const response = await fetch('http://localhost:11434/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gemma2',
+        messages: [
+          {
+            role: 'system',
+            content: promptText,
+          },
+          {
+            role: 'user',
+            content: `Conversation Log So Far:\n${textTranscript}`,
+          },
+        ],
+        temperature: 0.3,
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Ollama error: ${response.status} - ${errText}`);
+    }
+
+    const data = await response.json() as any;
+    return data.choices?.[0]?.message?.content || 'No suggestion received.';
+  }
+
+  // 3. OpenAI (GPT-4o)
+  if (provider === 'openai') {
+    if (!openaiApiKey) {
+      throw new Error('OpenAI API Key is missing.');
+    }
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openaiApiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: promptText,
+          },
+          {
+            role: 'user',
+            content: `Conversation Log So Far:\n${textTranscript}`,
+          },
+        ],
+        temperature: 0.3,
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`OpenAI API error: ${response.status} - ${errText}`);
+    }
+
+    const data = await response.json() as any;
+    return data.choices?.[0]?.message?.content || 'No suggestion received.';
+  }
+
+  // 4. Anthropic (Claude 3.5 Sonnet)
+  if (provider === 'anthropic') {
+    if (!anthropicApiKey) {
+      throw new Error('Anthropic API Key is missing.');
+    }
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': anthropicApiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-3-5-sonnet-20240620',
+        max_tokens: 1024,
+        system: promptText,
+        messages: [
+          {
+            role: 'user',
+            content: `Conversation Log So Far:\n${textTranscript}`,
+          },
+        ],
+        temperature: 0.3,
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Anthropic API error: ${response.status} - ${errText}`);
+    }
+
+    const data = await response.json() as any;
+    return data.content?.[0]?.text || 'No suggestion received.';
+  }
   
+  // 5. Gemini 1.5
   if (provider === 'google') {
     if (!geminiApiKey) {
       throw new Error('Gemini API Key is missing.');
@@ -197,6 +290,47 @@ export async function testLLMConnection(provider: string, url: string, key: stri
     }
     const data = await res.json() as any;
     return `Connected to LM Studio! Found models: ${data.data?.map((m: any) => m.id).join(', ')}`;
+  } else if (provider === 'gemma') {
+    const res = await fetch('http://localhost:11434/v1/models');
+    if (!res.ok) {
+      throw new Error('Ollama not running on http://localhost:11434');
+    }
+    const data = await res.json() as any;
+    return `Connected to Ollama! Found models: ${data.data?.map((m: any) => m.id).join(', ')}`;
+  } else if (provider === 'openai') {
+    if (!key) {
+      throw new Error('OpenAI API Key is required.');
+    }
+    const res = await fetch('https://api.openai.com/v1/models', {
+      headers: { 'Authorization': `Bearer ${key}` }
+    });
+    if (!res.ok) {
+      throw new Error('Invalid OpenAI API Key');
+    }
+    return 'OpenAI API connection verified successfully!';
+  } else if (provider === 'anthropic') {
+    if (!key) {
+      throw new Error('Anthropic API Key is required.');
+    }
+    // Anthropic doesn't have a simple list models GET endpoint without key headers.
+    // We send a dummy message to test authentication.
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-3-5-sonnet-20240620',
+        max_tokens: 1,
+        messages: [{ role: 'user', content: 'test' }]
+      })
+    });
+    if (res.status === 401 || res.status === 403) {
+      throw new Error('Invalid Anthropic API Key');
+    }
+    return 'Anthropic API connection verified successfully!';
   } else if (provider === 'google') {
     if (!key) {
       throw new Error('Gemini API key is required.');
@@ -210,8 +344,11 @@ export async function testLLMConnection(provider: string, url: string, key: stri
     if (!key) {
       throw new Error('Whisper API Key is required.');
     }
-    // Test Groq / OpenAI Whisper URL
-    const targetUrl = `${url.replace(/\/$/, '')}/models`;
+    let cleanUrl = url.trim().replace(/\/$/, '');
+    if (cleanUrl.endsWith('/audio/transcriptions')) {
+      cleanUrl = cleanUrl.replace(/\/audio\/transcriptions$/, '');
+    }
+    const targetUrl = `${cleanUrl}/models`;
     const res = await fetch(targetUrl, {
       headers: { 'Authorization': `Bearer ${key}` }
     });
