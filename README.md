@@ -120,6 +120,17 @@ Paste your **Resume / Experience** and the target **Job Description** in the mai
 2. Select **Local Whisper (transformers.js - FREE)**.
 3. Click **Start Assistant**. A progress loader will appear while downloading the ONNX model files.
 
+### 5. Nvidia NIM Configuration
+1. Select **Cloud: Nvidia NIM** from the provider dropdown.
+2. Enter your Nvidia API Key (`nvapi-...`).
+3. Set your Model Name (e.g. `meta/llama-3.1-70b-instruct`).
+4. (Optional) Customize the endpoint URL (defaults to `https://integrate.api.nvidia.com/v1`).
+
+### 6. Real-Time Web Search (RAG) using Tavily
+1. To enable search, navigate to the **Real-Time Web Search (RAG)** configuration card.
+2. Enter your Tavily API Key (`tvly-...`).
+3. Once configured, the assistant will automatically analyze the interviewer's query. If it requires external or time-sensitive tech data, it will perform a web search and append relevant search context to the LLM context automatically before answering.
+
 ---
 
 ## Git Workflow Guide (How to Branch & Post)
