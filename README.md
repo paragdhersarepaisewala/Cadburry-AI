@@ -80,18 +80,31 @@ Cadburry AI features a **Setup vs. Stealth Lock** workflow to make placement eas
    ```bash
    npm install
    ```
-3. Compile the Electron typescript files:
+
+### How to Run in Development Mode
+To run the application locally with hot-reloading active:
+1. Compile the Electron background process:
    ```bash
    npm run build:electron
    ```
-4. Boot up the Vite dev server (in one terminal session):
+2. Boot up the Vite frontend development server (first terminal window):
    ```bash
    npm run dev
    ```
-5. Run the Electron application (in another terminal session):
+3. Launch the Electron shell window (second terminal window):
    ```bash
    npm run electron:dev
    ```
+
+### How to Build & Package as a Standalone Desktop Application (.exe)
+To package the app into a production-ready, standalone desktop executable that runs without node or terminals:
+1. Run the build script:
+   ```bash
+   npm run build
+   ```
+2. Locate the packaged installer:
+   * The script compiles the React code, bundles the Electron main script, and creates a setup installer inside the `/out` directory.
+   * Open the `/out` directory and run the generated installer file (e.g. `hidden-interview-assistant Setup.exe`) to install it natively on your Windows desktop.
 
 ---
 
