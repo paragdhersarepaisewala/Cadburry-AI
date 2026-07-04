@@ -431,7 +431,7 @@ export default function StealthMode() {
           ? 'bg-black/10 border-0 pointer-events-none' 
           : 'bg-[#1a1715]/98 border border-[#c5a880]/30 rounded-2xl shadow-2xl shadow-[#c5a880]/10'
       }`}
-      style={{ opacity: isLocked ? opacity : 1 }}
+      style={{ opacity }}
     >
       
       {/* Control Header: Only visible when UNLOCKED */}

@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import { testLLMConnection, sendAudioToLLM, transcribeAudio } from './apiClient';
 
 const mammoth = require('mammoth');
-const pdf = require('pdf-parse');
+const { PDFParse } = require('pdf-parse');
 
 let mainWindow: BrowserWindow | null = null;
 let stealthWindow: BrowserWindow | null = null;
@@ -77,7 +77,9 @@ app.whenReady().then(() => {
   });
 
   ipcMain.on('start-stealth-mode', (_event, settings) => {
-    createStealthWindow(settings?.hideOverlayFromCapture !== false);
+    const hideFromCapture = settings?.hideOverlayFromCapture !== false;
+    console.log('Main process: start-stealth-mode hideFromCapture =', hideFromCapture);
+    createStealthWindow(hideFromCapture);
   });
 
   ipcMain.on('stop-stealth-mode', () => {
@@ -155,7 +157,9 @@ app.whenReady().then(() => {
         return { text: mammothResult.value };
       } else if (fileExt === '.pdf') {
         const buffer = fs.readFileSync(filePath);
-        const data = await pdf(buffer);
+        const uint8Array = new Uint8Array(buffer);
+        const parser = new PDFParse({ data: uint8Array });
+        const data = await parser.getText();
         return { text: data.text };
       } else {
         throw new Error('Unsupported file format. Please upload .pdf, .docx, or .txt files.');
