@@ -89,9 +89,18 @@ app.whenReady().then(() => {
   });
 
   ipcMain.on('set-content-protection', (_event, hideFromCapture) => {
+    console.log('Main process: set-content-protection received hideFromCapture =', hideFromCapture);
     if (stealthWindow) {
-      stealthWindow.setContentProtection(hideFromCapture);
-      console.log(`Main process: Dynamic content protection set to ${hideFromCapture}`);
+      const bounds = stealthWindow.getBounds();
+      stealthWindow.removeAllListeners('closed');
+      stealthWindow.close();
+      stealthWindow = null;
+      createStealthWindow(hideFromCapture);
+      const activeWin = stealthWindow as any;
+      if (activeWin) {
+        activeWin.setBounds(bounds);
+      }
+      console.log(`Main process: Recreated stealth window with content protection = ${hideFromCapture}`);
     }
   });
 

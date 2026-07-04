@@ -428,26 +428,31 @@ export default function StealthMode() {
     <div 
       className={`w-screen h-screen flex flex-col p-4 text-[#f0e6df] overflow-hidden transition-all duration-300 ${
         isLocked 
-          ? 'bg-black/10 border-0 pointer-events-none' 
-          : 'bg-[#1a1715]/98 border border-[#c5a880]/30 rounded-2xl shadow-2xl shadow-[#c5a880]/10'
+          ? 'border-0 pointer-events-none' 
+          : 'border border-[#c5a880]/30 rounded-2xl shadow-2xl shadow-[#c5a880]/10'
       }`}
-      style={{ opacity }}
+      style={{ 
+        backgroundColor: `rgba(26, 23, 21, ${opacity})`
+      }}
     >
       
       {/* Control Header: Only visible when UNLOCKED */}
       {!isLocked ? (
         <div 
-          className="flex justify-between items-center mb-3 p-2 rounded-xl bg-[#24201d]/90 border border-[#2d2722] shadow-md"
-          style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+          className="flex justify-between items-center mb-3 p-2 rounded-xl border border-[#2d2722] shadow-md"
+          style={{ 
+            WebkitAppRegion: 'drag', 
+            backgroundColor: 'rgba(36, 32, 29, 0.95)' 
+          } as React.CSSProperties}
         >
           {/* Drag Handle & Status */}
-          <div className="flex items-center gap-2 bg-black/40 px-2.5 py-1.5 rounded-lg select-none">
+          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg select-none" style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>
             <GripHorizontal size={16} className="text-[#c5a880] cursor-move" />
             <span className="text-[10px] text-gray-300 font-bold tracking-wider uppercase">Setup mode</span>
           </div>
 
           {/* Volume Meter */}
-          <div className="flex items-center gap-2 bg-black/30 px-3 py-1.5 rounded-lg text-[10px] text-gray-400 font-bold uppercase tracking-wider select-none">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] text-gray-400 font-bold uppercase tracking-wider select-none" style={{ backgroundColor: 'rgba(0, 0, 0, 0.3)' }}>
             <Monitor size={12} className={hasSystemAudioTrack ? "text-[#c5a880] animate-pulse" : "text-[#8c7b70]"} />
             <div className="w-16 h-2 bg-gray-800 rounded-sm overflow-hidden relative border border-gray-700">
               <div 
@@ -520,24 +525,24 @@ export default function StealthMode() {
       {!isLocked && (
         <>
           {downloadProgress && (
-            <div className="bg-[#2d2621]/50 border border-[#c5a880]/30 p-2.5 rounded-xl text-xs text-[#c5a880] mb-2 flex items-center gap-3 animate-pulse">
+            <div className="border border-[#c5a880]/30 p-2.5 rounded-xl text-xs text-[#c5a880] mb-2 flex items-center gap-3 animate-pulse" style={{ backgroundColor: 'rgba(45, 38, 33, 0.5)' }}>
               <Download size={14} className="text-[#c5a880]" />
               <p>{downloadProgress}</p>
             </div>
           )}
           {!hasSystemAudioTrack && isRecording && (
-            <div className="bg-amber-950/30 border border-amber-500/20 p-2.5 rounded-xl text-xs text-amber-400 mb-2 flex items-start gap-2">
+            <div className="border border-amber-500/20 p-2.5 rounded-xl text-xs text-amber-400 mb-2 flex items-start gap-2" style={{ backgroundColor: 'rgba(69, 26, 3, 0.3)' }}>
               <AlertCircle size={14} className="mt-0.5 shrink-0" />
               <p>No audio track detected. Make sure you share screen audio when running.</p>
             </div>
           )}
           {errorMsg && (
-            <div className="bg-rose-950/30 border border-rose-500/20 p-2.5 rounded-xl text-xs text-rose-400 mb-2 flex items-start gap-2">
+            <div className="border border-rose-500/20 p-2.5 rounded-xl text-xs text-rose-400 mb-2 flex items-start gap-2" style={{ backgroundColor: 'rgba(136, 19, 55, 0.3)' }}>
               <AlertCircle size={14} className="mt-0.5 shrink-0" />
               <p>{errorMsg}</p>
             </div>
           )}
-          <div className="text-[10px] text-[#c5a880]/80 bg-[#2d2621]/20 border border-[#c5a880]/10 p-2 rounded-xl text-center mb-2">
+          <div className="text-[10px] text-[#c5a880]/80 border border-[#c5a880]/10 p-2 rounded-xl text-center mb-2" style={{ backgroundColor: 'rgba(45, 38, 33, 0.2)' }}>
             💡 Position this window, resize it, then click <b>Lock</b>. Toggle pin status using <b>Ctrl+Alt+P</b>.
           </div>
         </>
@@ -554,11 +559,14 @@ export default function StealthMode() {
 
       {/* AI Suggestion Area */}
       <div 
-        className={`bg-gradient-to-r transition-all duration-350 ${
+        className={`transition-all duration-350 border ${
           isLocked 
-            ? 'h-40 from-[#2d2621]/20 to-[#1f1a17]/20 border-[#c5a880]/10 rounded-xl p-3 border' 
-            : 'h-48 from-[#2d2621]/40 to-[#1f1a17]/40 border-[#c5a880]/20 rounded-2xl p-4 border overflow-y-auto'
+            ? 'h-40 border-[#c5a880]/10 rounded-xl p-3' 
+            : 'h-48 border-[#c5a880]/20 rounded-2xl p-4 overflow-y-auto'
         } ${isPinned ? 'border-[#c5a880]/50 ring-1 ring-[#c5a880]/20' : ''}`}
+        style={{ 
+          backgroundColor: isLocked ? 'rgba(26, 23, 21, 0.1)' : 'rgba(45, 38, 33, 0.4)' 
+        }}
       >
         {aiResponse ? (
           <p className="text-sm font-semibold text-[#f0e6df] leading-relaxed whitespace-pre-line">
