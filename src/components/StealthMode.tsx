@@ -92,6 +92,24 @@ export default function StealthMode() {
   }, []);
 
   useEffect(() => {
+    // Listen to Global Lock/Unlock shortcut status (Ctrl+Alt+L)
+    if (window.electronAPI && window.electronAPI.onToggleLock) {
+      const unsubscribe = window.electronAPI.onToggleLock(() => {
+        if (window.electronAPI) {
+          if (isLocked) {
+            window.electronAPI.unlockStealthWindow();
+          } else {
+            window.electronAPI.lockStealthWindow();
+          }
+        }
+      });
+      return () => {
+        unsubscribe();
+      };
+    }
+  }, [isLocked]);
+
+  useEffect(() => {
     let animationFrameId: number;
     const updateVolumes = () => {
       setSystemVol(volumeRef.current.system);

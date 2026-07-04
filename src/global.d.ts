@@ -14,6 +14,7 @@ declare global {
       unlockStealthWindow: () => void;
       onStealthLockStatus: (callback: (locked: boolean) => void) => () => void;
       onTogglePin: (callback: () => void) => () => void;
+      onToggleLock: (callback: () => void) => () => void;
       importResume: () => Promise<{ text: string; error?: string } | null>;
       parseResumeFromPath: (filePath: string) => Promise<{ text: string; error?: string } | null>;
       getOSUsername: () => Promise<string>;

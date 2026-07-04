@@ -23,6 +23,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('toggle-stealth-pin', listener);
     return () => ipcRenderer.removeListener('toggle-stealth-pin', listener);
   },
+  onToggleLock: (callback: () => void) => {
+    const listener = () => callback();
+    ipcRenderer.on('toggle-stealth-lock', listener);
+    return () => ipcRenderer.removeListener('toggle-stealth-lock', listener);
+  },
   importResume: () => ipcRenderer.invoke('import-resume'),
   parseResumeFromPath: (filePath: string) => ipcRenderer.invoke('parse-resume-from-path', filePath),
   getOSUsername: () => ipcRenderer.invoke('get-os-username'),

@@ -76,6 +76,13 @@ app.whenReady().then(() => {
     }
   });
 
+  // Register global hotkey for locking/unlocking the response (Ctrl+Alt+L)
+  globalShortcut.register('CommandOrControl+Alt+L', () => {
+    if (stealthWindow) {
+      stealthWindow.webContents.send('toggle-stealth-lock');
+    }
+  });
+
   ipcMain.on('start-stealth-mode', (_event, settings) => {
     const hideFromCapture = settings?.hideOverlayFromCapture !== false;
     console.log('Main process: start-stealth-mode hideFromCapture =', hideFromCapture);
