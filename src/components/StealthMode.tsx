@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { X, GripHorizontal, AlertCircle, Download, Monitor, Lock, Pin } from 'lucide-react';
+import { X, GripHorizontal, AlertCircle, Download, Monitor, Lock, Pin, Unlock } from 'lucide-react';
 import { SlidingAudioBuffer } from '../utils/audioBuffer';
 import { initLocalWhisper, transcribeLocalAudio } from '../utils/localTranscriber';
 
@@ -92,7 +92,7 @@ export default function StealthMode() {
   }, []);
 
   useEffect(() => {
-    // Listen to Global Lock/Unlock shortcut status (Ctrl+Alt+L)
+    // Listen to Global Lock/Unlock shortcut status (Ctrl+Alt+U)
     if (window.electronAPI && window.electronAPI.onToggleLock) {
       const unsubscribe = window.electronAPI.onToggleLock(() => {
         if (window.electronAPI) {
@@ -107,6 +107,46 @@ export default function StealthMode() {
         unsubscribe();
       };
     }
+  }, [isLocked]);
+
+  useEffect(() => {
+    if (!isLocked) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const btn = document.getElementById('unlock-btn');
+      if (btn) {
+        const rect = btn.getBoundingClientRect();
+        const padding = 15; // Extra padding makes it easy to hover
+        if (
+          e.clientX >= rect.left - padding &&
+          e.clientX <= rect.right + padding &&
+          e.clientY >= rect.top - padding &&
+          e.clientY <= rect.bottom + padding
+        ) {
+          if (window.electronAPI) {
+            window.electronAPI.setIgnoreMouseEvents(false);
+          }
+        } else {
+          if (window.electronAPI) {
+            window.electronAPI.setIgnoreMouseEvents(true, { forward: true });
+          }
+        }
+      }
+    };
+
+    const handleMouseLeave = () => {
+      if (window.electronAPI) {
+        window.electronAPI.setIgnoreMouseEvents(true, { forward: true });
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseleave', handleMouseLeave);
+    
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseleave', handleMouseLeave);
+    };
   }, [isLocked]);
 
   useEffect(() => {
@@ -446,7 +486,7 @@ export default function StealthMode() {
     <div 
       className={`w-screen h-screen flex flex-col p-4 text-[#f0e6df] overflow-hidden transition-all duration-300 ${
         isLocked 
-          ? 'border-0 pointer-events-none' 
+          ? 'border-0' 
           : 'border border-[#c5a880]/30 rounded-2xl shadow-2xl shadow-[#c5a880]/10'
       }`}
       style={{ 
@@ -529,13 +569,23 @@ export default function StealthMode() {
         </div>
       ) : (
         /* Locked minimal indicators (faint, click-through) */
-        <div className="flex justify-between items-center mb-1 select-none opacity-40 text-[9px] font-bold text-gray-400 tracking-wider">
-          <div className="flex items-center gap-1.5">
+        <div className="flex justify-between items-center mb-1 select-none text-[9px] font-bold text-[#a6958a] tracking-wider">
+          <div className="flex items-center gap-1.5 opacity-60">
             <span className="w-1.5 h-1.5 rounded-full bg-[#c5a880] animate-ping"></span>
             <span>ASSISTANT ACTIVE</span>
             {isPinned && <span className="bg-amber-950/80 text-amber-400 border border-amber-500/20 px-1 py-0.5 rounded ml-1 text-[8px]">PINNED 📌</span>}
           </div>
-          <div>LOCKED (SHORTCUT: CTRL+ALT+P TO PIN/UNPIN)</div>
+          <div className="flex items-center gap-2">
+            <span className="opacity-40">SHORTCUT: CTRL+ALT+P TO PIN</span>
+            <button
+              id="unlock-btn"
+              onClick={toggleLock}
+              className="bg-[#24201d]/80 border border-[#c5a880]/30 hover:border-[#c5a880] text-[#c5a880] hover:text-white px-2 py-0.5 rounded flex items-center gap-1 transition-all cursor-pointer text-[9px] font-bold"
+            >
+              <Unlock size={10} />
+              Unlock Overlay
+            </button>
+          </div>
         </div>
       )}
 
@@ -561,7 +611,7 @@ export default function StealthMode() {
             </div>
           )}
           <div className="text-[10px] text-[#c5a880]/80 border border-[#c5a880]/10 p-2 rounded-xl text-center mb-2" style={{ backgroundColor: 'rgba(45, 38, 33, 0.2)' }}>
-            💡 Position this window, resize it, then click <b>Lock</b>. Toggle pin status using <b>Ctrl+Alt+P</b>.
+            💡 Position this window, resize it, then click <b>Lock</b>. Toggle pin: <b>Ctrl+Alt+P</b> | Toggle lock: <b>Ctrl+Alt+U</b>
           </div>
         </>
       )}

@@ -21,7 +21,8 @@ import {
   Unlock,
   Check,
   X,
-  FileCheck
+  FileCheck,
+  Pin
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -1189,10 +1190,17 @@ export default function Dashboard() {
                 <div className="pt-4 border-t border-[#312a24] space-y-2">
                   <label className="block text-xs font-bold text-[#a6958a] uppercase tracking-wider">Stealth Mode Hotkeys</label>
                   <div className="flex items-center gap-3 p-3.5 bg-[#121110] border border-[#201d1a] rounded-xl text-xs font-semibold text-white">
-                    <Lock size={14} className="text-[#8c7b70]" />
+                    <Pin size={14} className="text-[#8c7b70]" />
                     <span>Toggle response overlay pin:</span>
                     <kbd className="ml-auto bg-[#24201d] px-2.5 py-1.5 border border-[#3b332d] rounded-md text-[10px] font-mono tracking-tight text-[#c5a880] shadow-sm">
                       Ctrl + Alt + P
+                    </kbd>
+                  </div>
+                  <div className="flex items-center gap-3 p-3.5 bg-[#121110] border border-[#201d1a] rounded-xl text-xs font-semibold text-white">
+                    <Lock size={14} className="text-[#8c7b70]" />
+                    <span>Toggle response overlay lock:</span>
+                    <kbd className="ml-auto bg-[#24201d] px-2.5 py-1.5 border border-[#3b332d] rounded-md text-[10px] font-mono tracking-tight text-[#c5a880] shadow-sm">
+                      Ctrl + Alt + U
                     </kbd>
                   </div>
                 </div>

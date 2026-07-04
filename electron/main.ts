@@ -76,8 +76,8 @@ app.whenReady().then(() => {
     }
   });
 
-  // Register global hotkey for locking/unlocking the response (Ctrl+Alt+L)
-  globalShortcut.register('CommandOrControl+Alt+L', () => {
+  // Register global hotkey for locking/unlocking the response (Ctrl+Alt+U)
+  globalShortcut.register('CommandOrControl+Alt+U', () => {
     if (stealthWindow) {
       stealthWindow.webContents.send('toggle-stealth-lock');
     }
