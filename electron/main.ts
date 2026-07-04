@@ -29,8 +29,11 @@ function createMainWindow() {
   }
 }
 
-function createStealthWindow() {
-  if (stealthWindow) return;
+function createStealthWindow(hideFromCapture: boolean) {
+  if (stealthWindow) {
+    stealthWindow.setContentProtection(hideFromCapture);
+    return;
+  }
 
   stealthWindow = new BrowserWindow({
     width: 550,
@@ -49,7 +52,7 @@ function createStealthWindow() {
   // Starts as UNLOCKED (fully interactive) so the user can drag/resize it first
   stealthWindow.setIgnoreMouseEvents(false);
 
-  stealthWindow.setContentProtection(true);
+  stealthWindow.setContentProtection(hideFromCapture);
 
   if (app.isPackaged) {
     stealthWindow.loadFile(path.join(__dirname, '../dist/index.html'), { hash: 'stealth' });
@@ -73,13 +76,20 @@ app.whenReady().then(() => {
     }
   });
 
-  ipcMain.on('start-stealth-mode', () => {
-    createStealthWindow();
+  ipcMain.on('start-stealth-mode', (_event, settings) => {
+    createStealthWindow(settings?.hideOverlayFromCapture !== false);
   });
 
   ipcMain.on('stop-stealth-mode', () => {
     if (stealthWindow) {
       stealthWindow.close();
+    }
+  });
+
+  ipcMain.on('set-content-protection', (_event, hideFromCapture) => {
+    if (stealthWindow) {
+      stealthWindow.setContentProtection(hideFromCapture);
+      console.log(`Main process: Dynamic content protection set to ${hideFromCapture}`);
     }
   });
 

@@ -426,10 +426,10 @@ export default function StealthMode() {
 
   return (
     <div 
-      className={`w-screen h-screen flex flex-col p-4 text-white overflow-hidden transition-all duration-300 ${
+      className={`w-screen h-screen flex flex-col p-4 text-[#f0e6df] overflow-hidden transition-all duration-300 ${
         isLocked 
           ? 'bg-black/10 border-0 pointer-events-none' 
-          : 'bg-slate-950/95 border border-indigo-500/30 rounded-2xl shadow-2xl shadow-indigo-500/10'
+          : 'bg-[#1a1715]/98 border border-[#c5a880]/30 rounded-2xl shadow-2xl shadow-[#c5a880]/10'
       }`}
       style={{ opacity: isLocked ? opacity : 1 }}
     >
@@ -437,21 +437,21 @@ export default function StealthMode() {
       {/* Control Header: Only visible when UNLOCKED */}
       {!isLocked ? (
         <div 
-          className="flex justify-between items-center mb-3 p-2 rounded-xl bg-gray-900/90 border border-gray-800 shadow-md"
+          className="flex justify-between items-center mb-3 p-2 rounded-xl bg-[#24201d]/90 border border-[#2d2722] shadow-md"
           style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
         >
           {/* Drag Handle & Status */}
           <div className="flex items-center gap-2 bg-black/40 px-2.5 py-1.5 rounded-lg select-none">
-            <GripHorizontal size={16} className="text-indigo-400 cursor-move" />
+            <GripHorizontal size={16} className="text-[#c5a880] cursor-move" />
             <span className="text-[10px] text-gray-300 font-bold tracking-wider uppercase">Setup mode</span>
           </div>
 
           {/* Volume Meter */}
           <div className="flex items-center gap-2 bg-black/30 px-3 py-1.5 rounded-lg text-[10px] text-gray-400 font-bold uppercase tracking-wider select-none">
-            <Monitor size={12} className={hasSystemAudioTrack ? "text-blue-400 animate-pulse" : "text-gray-600"} />
+            <Monitor size={12} className={hasSystemAudioTrack ? "text-[#c5a880] animate-pulse" : "text-[#8c7b70]"} />
             <div className="w-16 h-2 bg-gray-800 rounded-sm overflow-hidden relative border border-gray-700">
               <div 
-                className="h-full bg-blue-500 transition-all duration-75"
+                className="h-full bg-[#c5a880] transition-all duration-75"
                 style={{ width: `${Math.min(100, Math.round(systemVol * 500))}%` }}
               ></div>
             </div>
@@ -471,7 +471,7 @@ export default function StealthMode() {
                 step="0.05" 
                 value={opacity} 
                 onChange={(e) => setOpacity(parseFloat(e.target.value))}
-                className="w-20 accent-indigo-500 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                className="w-20 accent-[#c5a880] h-1 bg-[#2c2621] rounded-lg appearance-none cursor-pointer"
               />
             </div>
 
@@ -481,7 +481,7 @@ export default function StealthMode() {
               className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
                 isPinned 
                   ? 'bg-amber-600 text-white' 
-                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                  : 'bg-[#24201d] text-[#f0e6df] hover:bg-[#2c2621] border border-[#3b332d]'
               }`}
             >
               <Pin size={12} />
@@ -490,7 +490,7 @@ export default function StealthMode() {
 
             <button 
               onClick={toggleLock}
-              className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 bg-gradient-to-r from-[#8c6d53] to-[#a37f62] hover:from-[#9c7b5f] hover:to-[#b59073] text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-[#a37f62]/10"
             >
               <Lock size={12} />
               Lock
@@ -508,7 +508,7 @@ export default function StealthMode() {
         /* Locked minimal indicators (faint, click-through) */
         <div className="flex justify-between items-center mb-1 select-none opacity-40 text-[9px] font-bold text-gray-400 tracking-wider">
           <div className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+            <span className="w-1.5 h-1.5 rounded-full bg-[#c5a880] animate-ping"></span>
             <span>ASSISTANT ACTIVE</span>
             {isPinned && <span className="bg-amber-950/80 text-amber-400 border border-amber-500/20 px-1 py-0.5 rounded ml-1 text-[8px]">PINNED 📌</span>}
           </div>
@@ -520,24 +520,24 @@ export default function StealthMode() {
       {!isLocked && (
         <>
           {downloadProgress && (
-            <div className="bg-indigo-950/50 border border-indigo-500/30 p-2.5 rounded-xl text-xs text-indigo-300 mb-2 flex items-center gap-3 animate-pulse">
-              <Download size={14} className="text-indigo-400" />
+            <div className="bg-[#2d2621]/50 border border-[#c5a880]/30 p-2.5 rounded-xl text-xs text-[#c5a880] mb-2 flex items-center gap-3 animate-pulse">
+              <Download size={14} className="text-[#c5a880]" />
               <p>{downloadProgress}</p>
             </div>
           )}
           {!hasSystemAudioTrack && isRecording && (
-            <div className="bg-amber-950/50 border border-amber-500/30 p-2.5 rounded-xl text-xs text-amber-300 mb-2 flex items-start gap-2">
+            <div className="bg-amber-950/30 border border-amber-500/20 p-2.5 rounded-xl text-xs text-amber-400 mb-2 flex items-start gap-2">
               <AlertCircle size={14} className="mt-0.5 shrink-0" />
               <p>No audio track detected. Make sure you share screen audio when running.</p>
             </div>
           )}
           {errorMsg && (
-            <div className="bg-rose-950/50 border border-rose-500/30 p-2.5 rounded-xl text-xs text-rose-300 mb-2 flex items-start gap-2">
+            <div className="bg-rose-950/30 border border-rose-500/20 p-2.5 rounded-xl text-xs text-rose-400 mb-2 flex items-start gap-2">
               <AlertCircle size={14} className="mt-0.5 shrink-0" />
               <p>{errorMsg}</p>
             </div>
           )}
-          <div className="text-[10px] text-indigo-300/80 bg-indigo-950/20 border border-indigo-500/10 p-2 rounded-xl text-center mb-2">
+          <div className="text-[10px] text-[#c5a880]/80 bg-[#2d2621]/20 border border-[#c5a880]/10 p-2 rounded-xl text-center mb-2">
             💡 Position this window, resize it, then click <b>Lock</b>. Toggle pin status using <b>Ctrl+Alt+P</b>.
           </div>
         </>
@@ -545,8 +545,8 @@ export default function StealthMode() {
 
       {/* Transcript Area */}
       <div 
-        className={`flex-1 overflow-y-auto mb-2 text-sm text-gray-300 p-1 select-none pointer-events-none transition-all ${
-          isLocked ? 'text-gray-400 font-medium' : 'text-gray-300'
+        className={`flex-1 overflow-y-auto mb-2 text-sm text-[#a6958a] p-1 select-none pointer-events-none transition-all ${
+          isLocked ? 'text-[#8c7b70] font-medium' : 'text-[#a6958a]'
         }`}
       >
         <p className="italic">{transcript}</p>
@@ -556,17 +556,17 @@ export default function StealthMode() {
       <div 
         className={`bg-gradient-to-r transition-all duration-350 ${
           isLocked 
-            ? 'h-40 from-indigo-950/40 to-purple-950/40 border-indigo-500/10 rounded-xl p-3 border' 
-            : 'h-48 from-indigo-950/70 to-purple-950/70 border-indigo-500/30 rounded-2xl p-4 border overflow-y-auto'
-        } ${isPinned ? 'border-amber-500/30 ring-1 ring-amber-500/10' : ''}`}
+            ? 'h-40 from-[#2d2621]/20 to-[#1f1a17]/20 border-[#c5a880]/10 rounded-xl p-3 border' 
+            : 'h-48 from-[#2d2621]/40 to-[#1f1a17]/40 border-[#c5a880]/20 rounded-2xl p-4 border overflow-y-auto'
+        } ${isPinned ? 'border-[#c5a880]/50 ring-1 ring-[#c5a880]/20' : ''}`}
       >
         {aiResponse ? (
-          <p className="text-sm font-semibold text-blue-100 leading-relaxed whitespace-pre-line">
+          <p className="text-sm font-semibold text-[#f0e6df] leading-relaxed whitespace-pre-line">
             {aiResponse}
           </p>
         ) : (
           <div className="flex items-center gap-3 h-full justify-center opacity-50 select-none">
-            <div className="w-2 h-2 rounded-full bg-blue-400 animate-ping"></div>
+            <div className="w-2 h-2 rounded-full bg-[#c5a880] animate-ping"></div>
             <span className="text-xs uppercase tracking-widest font-semibold">Waiting for interviewer questions...</span>
           </div>
         )}

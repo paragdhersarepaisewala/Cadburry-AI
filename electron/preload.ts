@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  startStealthMode: () => ipcRenderer.send('start-stealth-mode'),
+  startStealthMode: (settings: { hideOverlayFromCapture: boolean }) => ipcRenderer.send('start-stealth-mode', settings),
   stopStealthMode: () => ipcRenderer.send('stop-stealth-mode'),
   setIgnoreMouseEvents: (ignore: boolean, options?: { forward: boolean }) => 
     ipcRenderer.send('set-ignore-mouse-events', ignore, options),
@@ -26,5 +26,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   importResume: () => ipcRenderer.invoke('import-resume'),
   parseResumeFromPath: (filePath: string) => ipcRenderer.invoke('parse-resume-from-path', filePath),
   getOSUsername: () => ipcRenderer.invoke('get-os-username'),
-  openExternal: (url: string) => ipcRenderer.send('open-external', url)
+  openExternal: (url: string) => ipcRenderer.send('open-external', url),
+  setContentProtection: (hideFromCapture: boolean) => ipcRenderer.send('set-content-protection', hideFromCapture)
 });

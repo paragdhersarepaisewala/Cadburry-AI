@@ -3,7 +3,7 @@ export {};
 declare global {
   interface Window {
     electronAPI: {
-      startStealthMode: () => void;
+      startStealthMode: (settings: { hideOverlayFromCapture: boolean }) => void;
       stopStealthMode: () => void;
       setIgnoreMouseEvents: (ignore: boolean, options?: { forward: boolean }) => void;
       getDesktopSources: () => Promise<Array<{ id: string; name: string; thumbnail: any }>>;
@@ -18,6 +18,7 @@ declare global {
       parseResumeFromPath: (filePath: string) => Promise<{ text: string; error?: string } | null>;
       getOSUsername: () => Promise<string>;
       openExternal: (url: string) => void;
+      setContentProtection: (hideFromCapture: boolean) => void;
     };
   }
 }

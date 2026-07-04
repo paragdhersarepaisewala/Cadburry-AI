@@ -124,9 +124,15 @@ export default function Dashboard() {
     sttProvider, whisperUrl, whisperApiKey, whisperModel, userName, hideOverlayFromCapture, captureAudio
   ]);
 
+  useEffect(() => {
+    if (window.electronAPI && window.electronAPI.setContentProtection) {
+      window.electronAPI.setContentProtection(hideOverlayFromCapture);
+    }
+  }, [hideOverlayFromCapture]);
+
   const handleStart = () => {
     if (window.electronAPI) {
-      window.electronAPI.startStealthMode();
+      window.electronAPI.startStealthMode({ hideOverlayFromCapture });
     } else {
       console.warn('Electron API not available');
     }
@@ -1174,7 +1180,7 @@ export default function Dashboard() {
                     />
                     <span className="flex items-center gap-2 text-xs font-bold text-white">
                       <Mic size={14} className="text-[#8c7b70]" />
-                      Capture System Audio & Mic
+                      Capture System Audio
                     </span>
                   </label>
                 </div>
