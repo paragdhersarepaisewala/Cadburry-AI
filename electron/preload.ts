@@ -14,7 +14,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   lockStealthWindow: () => ipcRenderer.send('lock-stealth-window'),
   unlockStealthWindow: () => ipcRenderer.send('unlock-stealth-window'),
   onStealthLockStatus: (callback: (locked: boolean) => void) => {
-    const listener = (event: any, locked: boolean) => callback(locked);
+    const listener = (_event: any, locked: boolean) => callback(locked);
     ipcRenderer.on('stealth-lock-status', listener);
     return () => ipcRenderer.removeListener('stealth-lock-status', listener);
   },
@@ -22,5 +22,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const listener = () => callback();
     ipcRenderer.on('toggle-stealth-pin', listener);
     return () => ipcRenderer.removeListener('toggle-stealth-pin', listener);
-  }
+  },
+  importResume: () => ipcRenderer.invoke('import-resume'),
+  parseResumeFromPath: (filePath: string) => ipcRenderer.invoke('parse-resume-from-path', filePath),
+  getOSUsername: () => ipcRenderer.invoke('get-os-username'),
+  openExternal: (url: string) => ipcRenderer.send('open-external', url)
 });

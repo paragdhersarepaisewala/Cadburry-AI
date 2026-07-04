@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { X, GripHorizontal, Activity, AlertCircle, Download, Monitor, Lock, Pin } from 'lucide-react';
+import { X, GripHorizontal, AlertCircle, Download, Monitor, Lock, Pin } from 'lucide-react';
 import { SlidingAudioBuffer } from '../utils/audioBuffer';
 import { initLocalWhisper, transcribeLocalAudio } from '../utils/localTranscriber';
 

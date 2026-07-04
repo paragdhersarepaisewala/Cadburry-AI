@@ -4,14 +4,25 @@ Cadburry AI is a stealthy, real-time desktop assistant designed to help candidat
 
 Designed for complete discretion, Cadburry AI runs a dual-window interface featuring a protected overlay window that is hidden from screen sharing and recording software.
 
+## Product Screenshots
+
+### 🖥️ Main Configuration Dashboard
+![Main Dashboard UI](./assets/dashboard_ui.png)
+*Unified dark-mode dashboard featuring modern sidebar navigation, dynamic OS username greeting, native file upload and drag-and-drop resume importing, and built-in diagnostics.*
+
+### 🔒 Stealth Mode Overlay
+![Stealth Mode Overlay](./assets/stealth_mode.png)
+*Transparent response display that ignores mouse clicks and is hardware-protected from screen-sharing tools (Zoom, OBS, Teams).*
+
 ---
 
 ## Table of Contents
-1. [How It Works](#how-it-works)
-2. [Stealth UI System](#stealth-ui-system)
-3. [Setup & Installation](#setup--installation)
-4. [LLM & STT Configuration](#llm--stt-configuration)
-5. [Git Workflow Guide (How to Branch & Post)](#git-workflow-guide-how-to-branch--post)
+1. [Product Screenshots](#product-screenshots)
+2. [How It Works](#how-it-works)
+3. [Stealth UI System](#stealth-ui-system)
+4. [Setup & Installation](#setup--installation)
+5. [LLM & STT Configuration](#llm--stt-configuration)
+6. [Git Workflow Guide (How to Branch & Post)](#git-workflow-guide-how-to-branch--post)
 
 ---
 

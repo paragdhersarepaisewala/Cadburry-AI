@@ -1,6 +1,10 @@
-import { app, BrowserWindow, ipcMain, desktopCapturer, globalShortcut } from 'electron';
+import { app, BrowserWindow, ipcMain, desktopCapturer, globalShortcut, dialog, shell } from 'electron';
 import * as path from 'path';
+import * as fs from 'fs';
 import { testLLMConnection, sendAudioToLLM, transcribeAudio } from './apiClient';
+
+const mammoth = require('mammoth');
+const pdf = require('pdf-parse');
 
 let mainWindow: BrowserWindow | null = null;
 let stealthWindow: BrowserWindow | null = null;
@@ -21,7 +25,7 @@ function createMainWindow() {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   } else {
     mainWindow.loadURL('http://localhost:5173');
-    mainWindow.webContents.openDevTools();
+    // mainWindow.webContents.openDevTools();
   }
 }
 
@@ -51,7 +55,7 @@ function createStealthWindow() {
     stealthWindow.loadFile(path.join(__dirname, '../dist/index.html'), { hash: 'stealth' });
   } else {
     stealthWindow.loadURL('http://localhost:5173/#/stealth');
-    stealthWindow.webContents.openDevTools();
+    // stealthWindow.webContents.openDevTools();
   }
 
   stealthWindow.on('closed', () => {
@@ -117,16 +121,82 @@ app.whenReady().then(() => {
     return await desktopCapturer.getSources({ types: ['screen', 'window'] });
   });
 
-  ipcMain.handle('test-connection', async (event, provider, url, key, customModel) => {
+  ipcMain.handle('test-connection', async (_event, provider, url, key, customModel) => {
     return await testLLMConnection(provider, url, key, customModel);
   });
 
-  ipcMain.handle('call-llm-api', async (event, params) => {
+  ipcMain.handle('call-llm-api', async (_event, params) => {
     return await sendAudioToLLM(params);
   });
 
-  ipcMain.handle('transcribe-audio', async (event, url, key, model, audioBase64) => {
+  ipcMain.handle('transcribe-audio', async (_event, url, key, model, audioBase64) => {
     return await transcribeAudio(url, key, model, audioBase64);
+  });
+
+  async function parseFile(filePath: string) {
+    const fileExt = path.extname(filePath).toLowerCase();
+    try {
+      if (fileExt === '.txt') {
+        const text = fs.readFileSync(filePath, 'utf-8');
+        return { text };
+      } else if (fileExt === '.docx') {
+        const buffer = fs.readFileSync(filePath);
+        const mammothResult = await mammoth.extractRawText({ buffer });
+        return { text: mammothResult.value };
+      } else if (fileExt === '.pdf') {
+        const buffer = fs.readFileSync(filePath);
+        const data = await pdf(buffer);
+        return { text: data.text };
+      } else {
+        throw new Error('Unsupported file format. Please upload .pdf, .docx, or .txt files.');
+      }
+    } catch (error: any) {
+      console.error('Error parsing resume:', error);
+      return { error: error.message || 'Failed to parse resume file' };
+    }
+  }
+
+  ipcMain.handle('import-resume', async (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (!window) return null;
+
+    const result = await dialog.showOpenDialog(window, {
+      title: 'Select Resume File',
+      filters: [
+        { name: 'Resumes', extensions: ['pdf', 'docx', 'txt'] },
+        { name: 'PDF Documents', extensions: ['pdf'] },
+        { name: 'Word Documents', extensions: ['docx'] },
+        { name: 'Text Files', extensions: ['txt'] }
+      ],
+      properties: ['openFile']
+    });
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return null;
+    }
+
+    return await parseFile(result.filePaths[0]);
+  });
+
+  ipcMain.handle('parse-resume-from-path', async (_event, filePath) => {
+    return await parseFile(filePath);
+  });
+
+  ipcMain.handle('get-os-username', () => {
+    try {
+      const os = require('os');
+      const name = os.userInfo().username;
+      if (name) {
+        return name.charAt(0).toUpperCase() + name.slice(1);
+      }
+      return 'User';
+    } catch (e) {
+      return 'User';
+    }
+  });
+
+  ipcMain.on('open-external', (_event, url) => {
+    shell.openExternal(url);
   });
 
   app.on('activate', () => {
